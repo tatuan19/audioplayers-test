@@ -55,9 +55,36 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App is in the foreground
+        break;
+      case AppLifecycleState.paused:
+        // App is in the background
+        _togglePlayStop();
+        break;
+      default:
+        break;
+    }
+  }
 
   void _togglePlayStop() async {
     if (_isPlaying) {
@@ -72,12 +99,6 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _isPlaying = !_isPlaying;
     });
-  }
-
-  @override
-  void dispose() {
-    _audioPlayer.dispose();
-    super.dispose();
   }
 
   @override
