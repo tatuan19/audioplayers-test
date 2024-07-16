@@ -79,10 +79,12 @@ class WebSocketManager extends _$WebSocketManager {
   Future<void> _onMessageData(dynamic data) async {
     print('Received data: $data');
 
-    if (data == 'App is in the background') {
+    if (data == '"App is in the background"') {
       playMusic();
-    } else if (data == 'App is in the foreground') {
+      print('Playing music');
+    } else if (data == '"App is in the foreground"') {
       stopMusic();
+      print('Stopping music');
     }
   }
 
@@ -142,12 +144,16 @@ class WebSocketManager extends _$WebSocketManager {
   }
 
   void playMusic() async {
+    try {
       await _audioPlayer.setVolume(1.0);
       await _audioPlayer.setPlayerMode(PlayerMode.mediaPlayer);
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(UrlSource(
         'https://2u039f-a.akamaihd.net/downloads/ringtones/files/mp3/dharni-beatbox-63102.mp3',
       ));
+    } catch (e) {
+      print('Failed to play music: $e');
+    }
   }
 
   void stopMusic() async {
