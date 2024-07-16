@@ -1,8 +1,23 @@
+import 'dart:async';
+import 'dart:isolate';
+
+import 'package:audio_players_test/web_socket/web_socket_manager.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 void main() {
-  runApp(const MyApp());
+  runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Catch errors that happen outside of the Flutter context (non-fatal errors)
+    Isolate.current.addErrorListener(RawReceivePort((pair) async {
+      final List<dynamic> errorAndStacktrace = pair;
+      print('Caught error in isolate: ${errorAndStacktrace[0]}');
+    }).sendPort);
+
+    runApp(const ProviderScope(child: MyApp()));
+  }, (error, stack) => print('runZonedGuarded: $error\n$stack'));
 }
 
 class MyApp extends StatelessWidget {
@@ -37,7 +52,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({super.key, required this.title});
 
   // This widget is the home page of your application. It is stateful, meaning
@@ -52,10 +67,11 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
+class _MyHomePageState extends ConsumerState<MyHomePage>
+    with WidgetsBindingObserver {
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isPlaying = false;
 
@@ -76,10 +92,16 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.resumed:
         // App is in the foreground
+        ref.read(webSocketManagerProvider.notifier).connectAndSubscribe();
+        ref
+            .read(webSocketManagerProvider.notifier)
+            .sendMessage('App is in the foreground');
         break;
       case AppLifecycleState.paused:
         // App is in the background
-        _togglePlayStop();
+        ref
+            .read(webSocketManagerProvider.notifier)
+            .sendMessage('App is in the background');
         break;
       default:
         break;
@@ -94,10 +116,18 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       await _audioPlayer.setPlayerMode(PlayerMode.mediaPlayer);
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(UrlSource(
-          'https://github.com/rafaelreis-hotmart/Audio-Sample-files/raw/master/sample.mp3'));
+        'https://2u039f-a.akamaihd.net/downloads/ringtones/files/mp3/dharni-beatbox-63102.mp3',
+      ));
     }
     setState(() {
       _isPlaying = !_isPlaying;
+    });
+  }
+
+  void _stopMusic() async {
+    await _audioPlayer.stop();
+    setState(() {
+      _isPlaying = false;
     });
   }
 
@@ -121,7 +151,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       ),
       body: Center(
         child: ElevatedButton(
-          onPressed: _togglePlayStop,
+          onPressed: _stopMusic,
           child: Text(_isPlaying ? 'Stop Music' : 'Play Music'),
         ),
       ),
